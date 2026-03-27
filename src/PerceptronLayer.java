@@ -1,48 +1,21 @@
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class PerceptronLayer<T extends Trainable> {
-    private List<Perceptron> perceptrons = new ArrayList<>();
+    private Map<String, Perceptron> perceptrons = new LinkedHashMap<>();
     private List<String> classes = new ArrayList<>();
     private int inputSize = 0;
-    private double activationThreshold = 0;
     private double alphaLearningConstant = 0.25; 
-    private double betaLearningConstant = 0;
 
-    // Konstruktory
+    // Konstruktor
     PerceptronLayer(List<String> classes, int inputSize){
         this.classes = classes;
         this.inputSize = inputSize;
-        for(int i = 0; i < classes.size(); i++){
-            createPerceptron(this.inputSize, this.activationThreshold, this.alphaLearningConstant, this.betaLearningConstant);
-        }
-    }
-    PerceptronLayer(List<String> classes, int inputSize, double activationThreshold){
-        this.classes = classes;
-        this.inputSize = inputSize;
-        this.activationThreshold = activationThreshold;
-        for(int i = 0; i < classes.size(); i++){
-            createPerceptron(this.inputSize, this.activationThreshold, this.alphaLearningConstant, this.betaLearningConstant);
-        }
-    }
-    PerceptronLayer(List<String> classes, int inputSize, double activationThreshold, double alphaLearningConstant){
-        this.classes = classes;
-        this.inputSize = inputSize;
-        this.activationThreshold = activationThreshold;
-        this.alphaLearningConstant = alphaLearningConstant;
-        for(int i = 0; i < classes.size(); i++){
-            createPerceptron(this.inputSize, this.activationThreshold, this.alphaLearningConstant, this.betaLearningConstant);
-        }
-    }
-    PerceptronLayer(List<String> classes, int inputSize, double activationThreshold, double alphaLearningConstant, double betaLearningConstant){
-        this.classes = classes;
-        this.inputSize = inputSize;
-        this.activationThreshold = activationThreshold;
-        this.alphaLearningConstant = alphaLearningConstant;
-        this.betaLearningConstant = betaLearningConstant;
-        for(int i = 0; i < classes.size(); i++){
-            createPerceptron(this.inputSize, this.activationThreshold, this.alphaLearningConstant, this.betaLearningConstant);
+        for(String clazz : classes){
+            perceptrons.put(clazz, new Perceptron(inputSize, alphaLearningConstant));
         }
     }
 
@@ -50,17 +23,22 @@ public class PerceptronLayer<T extends Trainable> {
 
     // Uczenie perceptronów
     public void train(List<T> data, int epochs){
+        if(data.get(0).getInput().length != inputSize){
+            throw new IllegalArgumentException("Zły rozmiar wektora wejściowego");
+        }
         for(int e = 0; e < epochs; e++){
             TeachPerceptrons(data);
+            // Opcjonalne do dodania: early stopping w następnej linijce
+            //if(accuracy(data) > 0.95) break;
         }
     }
-
+    // Opcjonalne do dodania: early stopping
     private void TeachPerceptrons(List<T> listToTeach){
-        for (int i = 0; i < perceptrons.size(); i++){
-            Collections.shuffle(listToTeach);
-            Perceptron p = perceptrons.get(i);
-            String targetClass = classes.get(i);
-            for (T t : listToTeach){
+        List<T> shuffled = new ArrayList<>(listToTeach);
+        Collections.shuffle(shuffled);
+        for (String targetClass : perceptrons.keySet()){
+            Perceptron p = perceptrons.get(targetClass);
+            for (T t : shuffled){
                 int expected = t.getLabel().equals(targetClass) ? 1 : 0;
                 p.learn(t.getInput(), expected);
             }
@@ -70,25 +48,29 @@ public class PerceptronLayer<T extends Trainable> {
     // Klasyfikacja perceptronów
     public String classify(T t){
         double maxScore = Double.NEGATIVE_INFINITY;
-        int bestIndex = -1;
+        String bestClass = null;
+        double[] data = t.getInput();
 
-        for(int i = 0; i < perceptrons.size(); i++){
-            Perceptron p = perceptrons.get(i);
+        for(Map.Entry<String, Perceptron> entry : perceptrons.entrySet()){
+            String clazz = entry.getKey();
+            Perceptron p = entry.getValue();
             double sum = 0;
-            double[] data = t.getInput();
             double[] weights = p.getWeights();
-            for(int j = 0; j < weights.length; j++){
+            
+            for(int j = 0; j < weights.length - 1; j++){
                 sum += data[j] * weights[j];
             }
+            sum += weights[weights.length - 1]; // bias
+
             if(sum > maxScore){
                 maxScore = sum;
-                bestIndex = i;
+                bestClass = clazz;
             }
         }
-        if(bestIndex == -1){
+        if(bestClass == null){
             throw new IllegalStateException("Brak klasyfikacji - sprawdź dane");
         }
-        return classes.get(bestIndex);
+        return bestClass;
     }
 
     // Test celności warstwy perceeptronów
@@ -102,10 +84,11 @@ public class PerceptronLayer<T extends Trainable> {
         return (double) correct / testData.size();
     }
 
-
-    // Tworzenie perceptronu
-    private void createPerceptron(int LengthOfTheWeightVector, double activationThreshold, double alphaLearningConstant, double betaLearningConstant){
-        Perceptron perceptron = new Perceptron(LengthOfTheWeightVector, activationThreshold, alphaLearningConstant, betaLearningConstant);
-        perceptrons.add(perceptron);
+    // Gettery
+    public List<String> getClasses(){
+        return classes;
+    }
+    public int getInputSize(){
+        return inputSize;
     }
 }

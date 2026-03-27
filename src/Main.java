@@ -9,77 +9,39 @@ public class Main {
     static List<Iris> listToTeach = new ArrayList<>();
     static List<Iris> listToTest = new ArrayList<>();
 
-    static Perceptron perceptron = new Perceptron(4, 0, 0.25);
+    static PerceptronLayer<Iris> layer;
 
     static int iterationNumber = 100;
 
     public static void main(String[] args) {
         getData();
 
-        // Założenie: Iris setosa -> 1
-        // Wszystkie pozostałe -> 0
+        List<String> classes = List.of(
+                "Iris-setosa",
+                "Iris-versicolor",
+                "Iris-virginica"
+        );
 
-        for(int i = 0; i < iterationNumber; i++){
-            TeachPerceptron();
-        }
+        layer = new PerceptronLayer<>(classes, 4);
 
-        TestAccuracy();
+        layer.train(listToTeach, iterationNumber);
+
+        testAccuracy();
 
     }
 
+    static void testAccuracy(){
+        double accuracy = layer.accuracy(listToTest) * 100;
+        System.out.println("Celność warstwy perceptronów: " + accuracy + "%");
 
-
-
-    
-    static void TeachPerceptron(){
-        for (Iris iris : listToTeach) {
-            double[] data = {iris.sepalLength, iris.sepalWidth, iris.petalLength, iris.petalWidth};
-            perceptron.learn(data, isSetosa(iris));
-        }
-    }
-
-    static void TestAccuracy(){
-        int counter = 0;
-        for (Iris iris : listToTest) {
-            double[] data = {iris.sepalLength, iris.sepalWidth, iris.petalLength, iris.petalWidth};
-
-            if(perceptron.classify(data) == isSetosa(iris)){// Sprawdzamy, czy perceptron mówi prawdę
-                counter++;
+        if(debugMode){
+            System.out.println("\n=== DEBUG: szczegółowe wyniki ===");
+            for(Iris iris : listToTest){
+                String predicted = layer.classify(iris);
+                System.out.println("Real: " + iris.type + " | Pred: " + predicted);
             }
         }
-        double accuracy = ((double)counter / (double)listToTest.size()) * 100;
-        System.out.println("Celność perceptronu: " + accuracy + "%");
     }
-
-
-    static int isSetosa(Iris iris){
-        if(iris.type.equals("Iris-setosa")){
-            return 1;
-        }else{
-            return 0;
-        }
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
